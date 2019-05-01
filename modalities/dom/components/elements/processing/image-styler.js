@@ -29,9 +29,7 @@ class ImageStyleTransfer extends Xen.Async {
     return template;
   }
   update({imgurl, modelurl}, state) {
-
-    console.log('args: ', imgurl, modelurl);
-
+    log('args: ', imgurl, modelurl);
     if (!state.status) {
       state.status = 'idle';
     }
@@ -41,16 +39,27 @@ class ImageStyleTransfer extends Xen.Async {
     }
     if (state.modelurl !== modelurl) {
       state.modelurl = modelurl;
+      this.updateModel(modelurl);
     }
     if (state.img && !!state.modelurl) {
       const img = state.img;
       state.img = null;
-      this.applyTransfer(img, modelurl);
+      const styler = state.styler;
+      state.styler = null;
+      this.applyTransfer(img, styler);
     }
   }
   async updateUrl(url) {
     const img = await this.getImage(url);
     this.state = {img};
+  }
+  async updateModel(modelUrl) {
+    log('Loading style transfer model...');
+    this.state.status = 'loading model';
+    const styler = await window.ml5.styleTransfer(modelUrl);
+    this.state = {styler};
+    this.state.status = 'model loaded';
+    log('Model loaded.');
   }
   async getImage(url) {
     return new Promise((resolve, reject) => {
@@ -62,10 +71,14 @@ class ImageStyleTransfer extends Xen.Async {
   render(props, state) {
     return state;
   }
-  async applyTransfer(baseImage, styleModel) {
-    console.log('starting style transfer');
-    log('Loading style transfer model...');
-    const styler = await window.ml5.styleTransfer(styleModel);
+  async applyTransfer(baseImage, styler) {
+    if (!styler) {
+      log('Loading style transfer model...');
+      this.state.status = 'loading model';
+      styler = await window.ml5.styleTransfer(this.state.modelurl);
+      this.state.status = 'model loaded';
+      log('Model loaded.');
+    }
     log('Applying style transfer...');
     styler.transfer(baseImage, (err, result) => {
       if (err) {
