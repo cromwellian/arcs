@@ -12,7 +12,7 @@
 /* global defineParticle */
 defineParticle(({DomParticle, html, log}) => {
 
-  const template = html`
+  const tmpl = html`
     <camera-input on-capture="onCapture"></camera-input>
     <div style="padding: 16px;">
       <h2>Arcs Image Processing Demo</h2>
@@ -27,7 +27,7 @@ defineParticle(({DomParticle, html, log}) => {
 
   return class extends DomParticle {
     get template() {
-      return template;
+      return tmpl;
     }
 
     render(props, state) {

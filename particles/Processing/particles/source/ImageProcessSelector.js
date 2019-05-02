@@ -13,7 +13,7 @@
 
 defineParticle(({DomParticle, html, log}) => {
 
-  const template = html`
+  const tmpl = html`
     <div style="padding: 16px;">
      <button on-click="onClassify">Classify</button>
      <button on-click="onStyle">Style</button>
@@ -23,7 +23,7 @@ defineParticle(({DomParticle, html, log}) => {
 
   return class extends DomParticle {
     get template() {
-      return template;
+      return tmpl;
     }
     shouldRender({imageToProcess}) {
       return !!imageToProcess;
