@@ -53,10 +53,9 @@ class ImageStyleTransfer extends Xen.Async {
   }
   async updateModel(modelUrl) {
     log('Loading style transfer model...');
-    this.state.status = 'loading model';
+    this.state = {status: 'loading model'};
     const styler = await window.ml5.styleTransfer(modelUrl);
-    this.state = {styler};
-    this.state.status = 'model loaded';
+    this.state = {styler, status: 'model loaded'};
     log('Model loaded.');
   }
   async getImage(url) {
@@ -72,9 +71,9 @@ class ImageStyleTransfer extends Xen.Async {
   async applyTransfer(baseImage, styler) {
     if (!styler) {
       log('Loading style transfer model...');
-      this.state.status = 'loading model';
+      this.state = {status: 'loading model'};
       styler = await window.ml5.styleTransfer(this.state.modelurl);
-      this.state.status = 'model loaded';
+      this.state = {styler, status: 'model loaded'};
       log('Model loaded.');
     }
     log('Applying style transfer...');
