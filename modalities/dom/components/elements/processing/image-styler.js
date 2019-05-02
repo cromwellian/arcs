@@ -10,7 +10,7 @@
 import {Xen} from '../../xen/xen-async.js';
 import 'https://unpkg.com/ml5@0.2.3/dist/ml5.min.js';
 
-const log = console.log; // Xen.logFactory('ImageStyleTransfer', 'green');
+const log = Xen.logFactory('ImageStyleTransfer', 'green');
 
 
 const template = Xen.html`
