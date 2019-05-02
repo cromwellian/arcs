@@ -41,11 +41,9 @@ class ImageStyleTransfer extends Xen.Async {
       state.modelurl = modelurl;
       this.updateModel(modelurl);
     }
-    if (state.img && !!state.modelurl) {
+    if (state.img && state.modelurl) {
       const img = state.img;
-      state.img = null;
       const styler = state.styler;
-      state.styler = null;
       this.applyTransfer(img, styler);
     }
   }
