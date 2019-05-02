@@ -13,7 +13,7 @@
 
 defineParticle(({DomParticle, html, log}) => {
 
-  const template = html`
+  const tmpl = html`
     <div style="padding: 16px;">
       <h2>Arcs Image Processing Demo</h2>
       <h3>Input an image url</h3>
@@ -28,7 +28,7 @@ defineParticle(({DomParticle, html, log}) => {
 
   return class extends DomParticle {
     get template() {
-      return template;
+      return tmpl;
     }
     render(props, state) {
       return state;

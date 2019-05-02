@@ -13,7 +13,7 @@
 
 defineParticle(({DomParticle, html, log}) => {
 
-  const template = html`
+  const tmpl = html`
     <image-processor url="{{url}}" on-results="{{onResults}}"></image-processor>
     <div hidden={{shouldHide}} style="padding: 16px;">
       <div>Status: <b>{{status}}</b></div>
@@ -24,7 +24,7 @@ defineParticle(({DomParticle, html, log}) => {
 
   return class extends DomParticle {
     get template() {
-      return template;
+      return tmpl;
     }
     shouldRender({image}) {
       return !!image;
