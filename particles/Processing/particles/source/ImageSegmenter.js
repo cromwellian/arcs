@@ -12,7 +12,10 @@
 defineParticle(({DomParticle, html, log}) => {
 
   const tmpl = html`
-  <image-styler imgurl="{{url}}" modelurl="{{model}}" on-results="{{onResults}}"></image-styler> 
+  <image-segmenter imgurl="{{url}}" on-results="{{onResults}}"></image-segmenter>
+  <div style="padding: 16px">
+    <img src="{{newImg}}">
+  </div>
   `;
 
   return class extends DomParticle {
@@ -32,9 +35,9 @@ defineParticle(({DomParticle, html, log}) => {
     onResults({data: {value}}) {
       this.setState({
         status: 'done',
-        newImg: value.src,
+        newImg: value.url,
       });
-      this.updateVariable('styledImage', {url: value.src});
+      this.updateVariable('mask', this.state.newImg);
     }
   };
 });

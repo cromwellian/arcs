@@ -12,7 +12,9 @@
 defineParticle(({DomParticle, html, log}) => {
 
   const tmpl = html`
-  <image-styler imgurl="{{url}}" modelurl="{{model}}" on-results="{{onResults}}"></image-styler> 
+  <div style="padding: 16px">
+    <img src="{{newImg}}">
+  </div>
   `;
 
   return class extends DomParticle {
@@ -20,21 +22,11 @@ defineParticle(({DomParticle, html, log}) => {
       return tmpl;
     }
 
-    render({image, model}, state) {
+    render({image}, state) {
       return {
-        status: state.status || (image ? 'transfering' : 'idle'),
-        url: image ? image.url : '',
-        model: model ? model.url : '',
-        newImg: state.newImg ? state.newImg : '',
+        newImg: image && image.url ? image.url : state.newImg
       };
     }
 
-    onResults({data: {value}}) {
-      this.setState({
-        status: 'done',
-        newImg: value.src,
-      });
-      this.updateVariable('styledImage', {url: value.src});
-    }
   };
 });

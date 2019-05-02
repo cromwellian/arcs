@@ -17,7 +17,7 @@ defineParticle(({DomParticle, html, log}) => {
     <div style="padding: 16px;">
       <h2>Arcs Image Processing Demo</h2>
       <h3>Input an image url</h3>
-      <input style="width: 80%; padding: 8px;" type="text" value="http://localhost:8786/particles/Processing/assets/kitten.jpg"  on-change="onChange">
+      <input style="width: 80%; padding: 8px;" type="text" value="{{url}}"  on-change="onChange">
       <button on-click="onSubmit">Submit</button>
       <br><br>
       <img src="{{url}}">
@@ -29,16 +29,22 @@ defineParticle(({DomParticle, html, log}) => {
     get template() {
       return template;
     }
+
     render(props, state) {
+      if (!this.state.url) {
+        this.state.url = "http://localhost:8786/particles/Processing/assets/kitten.jpg";
+      }
       return state;
     }
+
     onChange({data: {value}}) {
-      this.setState({inputUrl: value});
+      this.setState({url: value});
     }
+
     onSubmit() {
-      const url = this.state.inputUrl;
+      const url = this.state.url;
       this.updateVariable('image', {url: this.state.url});
-      this.updateVariable('blob', this.state.blob);
+      // this.updateVariable('blob', this.state.blob);
       this.setState({url});
     }
 

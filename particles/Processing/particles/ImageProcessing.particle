@@ -2,6 +2,5 @@ import '../schemas/Image.schema'
 
 particle ImageProcessing in './source/ImageProcessing.js'
   in ImageUrl image
-  in ImageBlob blob
   consume root
 
