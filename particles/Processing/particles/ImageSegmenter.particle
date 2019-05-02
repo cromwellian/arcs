@@ -1,10 +1,9 @@
 import '../schemas/Image.schema'
 import '../schemas/MlModel.schema'
 
-particle ImageStyler in './source/ImageStyler.js'
+particle ImageSegmenter in './source/ImageSegmenter.js'
   in ImageUrl image
-  in MlModelUrl model
-  out ImageUrl styledImage
+  out ImageUrl mask
   consume root
 
 

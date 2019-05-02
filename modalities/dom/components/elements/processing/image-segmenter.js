@@ -8,12 +8,13 @@
  */
 
 import {Xen} from '../../xen/xen-async.js';
-import 'https://unpkg.com/ml5@0.2.3/dist/ml5.min.js';
 
-const log = Xen.logFactory('ImageStyleTransfer', 'green');
+import * as bodyPix from 'https://unpkg.com/@tensorflow-models/body-pix@1.0.0/dist/body-pix.esm.js?module';
 
+const log = Xen.logFactory('ImageSegmenter', 'green');
 
 const template = Xen.html`
+<canvas id='canvas' style='display: none'></canvas>
 `;
 
 
@@ -21,15 +22,20 @@ const template = Xen.html`
  * Apply a style-transfer model to an input image.
  * Passes a new image source to the `on-results` event handler.
  */
-class ImageStyleTransfer extends Xen.Async {
+class ImageSegmenter extends Xen.Async {
   static get observedAttributes() {
-    return ['imgurl', 'modelurl'];
+    return ['imgurl'];
   }
   get template() {
     return template;
   }
-  update({imgurl, modelurl}, state) {
-    log('args: ', imgurl, modelurl);
+  _didMount() {
+    this.canvas = this.host.getElementById('canvas');
+    this.ctx = this.canvas.getContext('2d');
+  }
+
+  update({imgurl}, state) {
+    log('args: ', imgurl);
     if (!state.status) {
       state.status = 'idle';
     }
@@ -37,14 +43,11 @@ class ImageStyleTransfer extends Xen.Async {
       state.imgurl = imgurl;
       this.updateUrl(imgurl);
     }
-    if (state.modelurl !== modelurl) {
-      state.modelurl = modelurl;
-      this.updateModel(modelurl);
-    }
-    if (state.img && state.modelurl) {
+
+    if (state.img) {
       const img = state.img;
       const styler = state.styler;
-      this.applyTransfer(img, styler);
+      this.segment(img);
     }
   }
 
@@ -54,17 +57,6 @@ class ImageStyleTransfer extends Xen.Async {
       this._setState({img});
     } else {
       this._setState({img: null});
-    }
-  }
-  async updateModel(modelUrl) {
-    if (modelUrl) {
-      log('Loading style transfer model...');
-      this._setState({status: 'loading model'});
-      const styler = await window.ml5.styleTransfer(modelUrl);
-      this._setState({styler, status: 'model loaded'});
-      log('Model loaded.');
-    } else {
-      this._setState({status: 'model not loaded'});
     }
   }
 
@@ -78,26 +70,23 @@ class ImageStyleTransfer extends Xen.Async {
   render(props, state) {
     return state;
   }
-  async applyTransfer(baseImage, styler) {
-    if (!styler) {
-      log('Loading style transfer model...');
-      this._setState({status: 'loading model'});
-      styler = await window.ml5.styleTransfer(this.state.modelurl);
-      this._setState({styler, status: 'model loaded'});
-      log('Model loaded.');
-    }
-    log('Applying style transfer...');
-    styler.transfer(baseImage, (err, result) => {
-      if (err) {
-        return;
-      }
-      this.value = {
-        src: result.src,
-      };
-      this.fire('results');
-    });
+  async segment(img) {
+    log('Segmenting...');
+    const net = await bodyPix.load();
+    const segmentation = await net.estimatePersonSegmentation(img);
+    const maskBackground = true;
+// Convert the personSegmentation into a mask to darken the background.
+    const backgroundDarkeningMask = bodyPix.toMaskImageData(segmentation, maskBackground);
+
+    const opacity = 0.7;
+
+// draw the mask onto the image on a canvas.  With opacity set to 0.7 this will darken the background.
+    bodyPix.drawMask(
+      this.canvas, img, backgroundDarkeningMask, opacity);
+    this.value = {url: this.canvas.toDataURL("image/png")};
+    this.fire('results');
   }
 }
 
 
-customElements.define('image-styler', ImageStyleTransfer);
+customElements.define('image-segmenter', ImageSegmenter);

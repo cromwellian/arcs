@@ -10,15 +10,14 @@
 'use strict';
 
 /* global defineParticle */
-
 defineParticle(({DomParticle, html, log}) => {
 
   const tmpl = html`
+    <camera-input on-capture="onCapture"></camera-input>
     <div style="padding: 16px;">
       <h2>Arcs Image Processing Demo</h2>
       <h3>Input an image url</h3>
-      <input style="width: 80%; padding: 8px;" on-change="onChange">
-      <h5 style="margin: 8px 0;">Try: https://behelits.com/projects/ml5-examples/javascript/ImageClassification/images/kitten.jpg</h5>
+      <input style="width: 80%; padding: 8px;" type="text" value="{{url}}"  on-change="onChange">
       <button on-click="onSubmit">Submit</button>
       <br><br>
       <img src="{{url}}">
@@ -30,18 +29,32 @@ defineParticle(({DomParticle, html, log}) => {
     get template() {
       return tmpl;
     }
+
     render(props, state) {
+      if (!this.state.url) {
+        this.state.url = "http://localhost:8786/particles/Processing/assets/kitten.jpg";
+      }
       return state;
     }
+
     onChange({data: {value}}) {
-      this.setState({inputUrl: value});
+      this.setState({url: value});
     }
+
     onSubmit() {
-      console.log(this.props);
-      const url = this.state.inputUrl;
-      this.updateVariable('image', {url});
+      const url = this.state.url;
+      this.updateVariable('image', {url: this.state.url});
+      // this.updateVariable('blob', this.state.blob);
       this.setState({url});
     }
-  };
 
+    onCapture(data) {
+      const {pixels, width, height, url} = data.data.value;
+      this.setState({url: url, blob: {
+          blob: new Uint8Array(pixels.buffer),
+          width: width,
+          height: height
+        }});
+    }
+  };
 });
