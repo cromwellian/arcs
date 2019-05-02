@@ -5,12 +5,13 @@ import 'particles/ImageProcessing.particle'
 import 'particles/ImageStyler.particle'
 
 recipe ImageProcessing
-  create #volatile as target
+  create as target
   ImageCapture
     image -> target
+    blob -> blob
     consume root
       provide imageView as viewSlot
-  create #volatile as classifyTarget
+  create as classifyTarget
   ImageProcessSelector
     imageToProcess <- target
     imageToClassify -> classifyTarget

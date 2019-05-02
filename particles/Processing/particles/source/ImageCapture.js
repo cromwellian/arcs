@@ -10,10 +10,10 @@
 'use strict';
 
 /* global defineParticle */
-
 defineParticle(({DomParticle, html, log}) => {
 
   const template = html`
+    <camera-input on-capture="onCapture"></camera-input>
     <div style="padding: 16px;">
       <h2>Arcs Image Processing Demo</h2>
       <h3>Input an image url</h3>
@@ -36,11 +36,19 @@ defineParticle(({DomParticle, html, log}) => {
       this.setState({inputUrl: value});
     }
     onSubmit() {
-      console.log(this.props);
       const url = this.state.inputUrl;
-      this.updateVariable('image', {url});
+      this.updateVariable('image', {url: this.state.url});
+      this.updateVariable('blob', this.state.blob);
       this.setState({url});
     }
-  };
 
+    onCapture(data) {
+      const {pixels, width, height, url} = data.data.value;
+      this.setState({url: url, blob: {
+          blob: new Uint8Array(pixels.buffer),
+          width: width,
+          height: height
+        }});
+    }
+  };
 });

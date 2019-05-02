@@ -29,7 +29,7 @@ defineParticle(({DomParticle, html, log}) => {
     shouldRender({image}) {
       return !!image;
     }
-    render({image}, {status, label, probability}) {
+    render({image, blob}, {status, label, probability}) {
       return {
         status: status || (image ? 'classifying' : 'idle'),
         url: image ? image.url : '',
