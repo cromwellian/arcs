@@ -71,7 +71,7 @@ class CameraInput extends Xen.Base {
     this.value = {
       width: imageData.width,
       height: imageData.height,
-      url: this.canvas.toDataURL('image/png')
+      url: this.canvas.toDataURL('image/png', 50),
     };
     this._stop();
     this.fire('capture', this.value);
