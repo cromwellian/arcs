@@ -79,9 +79,9 @@ class CameraInput extends Xen.Base {
   capture() {
     // Draw whatever is in the video element on to the canvas.
     this.ctx.drawImage(this.player, 0, 0);
-    const imageData = this.ctx.getImageData(0, 0, 640, 480);
     this.value = {
-      pixels: imageData.data, width: imageData.width, height: imageData.height,
+      width: imageData.width,
+      height: imageData.height,
       url: this.canvas.toDataURL('image/png')
     };
     this._stop();
