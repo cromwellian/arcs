@@ -34,7 +34,7 @@ class CameraInput extends Xen.Base {
     return template;
   }
 
-  _didMount() {
+  didMount() {
     this.player = this.host.getElementById('player');
     this.canvas = this.host.getElementById('canvas');
     this.ctx = this.canvas.getContext('2d');
@@ -61,19 +61,8 @@ class CameraInput extends Xen.Base {
     this.isRecording = false;
   }
 
-  _update(props, state) {
-  }
-
-  _render(props, state) {
+  render(props, state) {
     return state;
-  }
-
-  start() {
-
-  }
-
-  stop() {
-
   }
 
   capture() {
@@ -85,7 +74,7 @@ class CameraInput extends Xen.Base {
       url: this.canvas.toDataURL('image/png')
     };
     this._stop();
-    this._fire('capture', this.value);
+    this.fire('capture', this.value);
   }
 
 }
