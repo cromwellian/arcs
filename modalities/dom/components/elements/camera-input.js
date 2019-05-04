@@ -34,7 +34,7 @@ class CameraInput extends Xen.Base {
     return template;
   }
 
-  didMount() {
+  _didMount() {
     this.player = this.host.getElementById('player');
     this.canvas = this.host.getElementById('canvas');
     this.ctx = this.canvas.getContext('2d');
@@ -69,12 +69,12 @@ class CameraInput extends Xen.Base {
     // Draw whatever is in the video element on to the canvas.
     this.ctx.drawImage(this.player, 0, 0);
     this.value = {
-      width: imageData.width,
-      height: imageData.height,
+      width: this.player.width,
+      height: this.player.height,
       url: this.canvas.toDataURL('image/png', 50),
     };
     this._stop();
-    this.fire('capture', this.value);
+    this._fire('capture', this.value);
   }
 
 }
