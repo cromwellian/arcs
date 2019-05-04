@@ -11,8 +11,8 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 import Xen from '../xen/xen.js';
 
 let template = Xen.html`
-<video id="player" width="640" height="480" autoplay ></video>
-<canvas id="canvas" style="display: none;" width="640" height="480"></canvas>
+<video id="player" width="400" height="300" autoplay ></video>
+<canvas id="canvas" style="display: none;" width="400" height="300"></canvas>
 <br/>
 <span>
     <button id="recordbutton" on-click="record">Start Recording</button>
@@ -67,11 +67,11 @@ class CameraInput extends Xen.Base {
 
   capture() {
     // Draw whatever is in the video element on to the canvas.
-    this.ctx.drawImage(this.player, 0, 0);
+    this.ctx.drawImage(this.player, 0, 0, 640, 480, 0, 0, 400, 300);
     this.value = {
       width: this.player.width,
       height: this.player.height,
-      url: this.canvas.toDataURL('image/png', 50),
+      url: this.canvas.toDataURL('image/jpg', 50),
     };
     this._stop();
     this._fire('capture', this.value);
