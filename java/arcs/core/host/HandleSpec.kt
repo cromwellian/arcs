@@ -12,7 +12,7 @@ import arcs.core.storage.StorageKey
  * @property tags specified on the handle in the manifest.
  * @property schema is the [Schema] definition used for this [StorageKey]
  */
-class HandleSpec(
+data class HandleSpec(
     // unused for now
     var id: String?,
     var name: String?,

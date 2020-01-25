@@ -17,4 +17,21 @@ package arcs.core.host
 open class Plan(
     // TODO(cromwellian): add more fields as needed (e.g. RecipeName, etc for debugging)
     val handleConnectionSpecs: List<HandleConnectionSpec>
-)
+
+
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Plan
+
+        if (handleConnectionSpecs != other.handleConnectionSpecs) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return handleConnectionSpecs.hashCode()
+    }
+}

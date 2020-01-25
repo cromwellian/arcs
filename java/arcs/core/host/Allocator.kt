@@ -127,14 +127,12 @@ class Allocator(val hostRegistry: HostRegistry) {
             }
 
     /**
-     * Find [ArcHosts] by looking up known registered particles in every [ArcHost],
-     * mapping them to fully qualified Java classnames, and comparing them with the
-     * [ParticleSpec.location].
+     * Find [ArcHosts] by looking up known registered particles in every [ArcHost] by their
+     * [ParticleIdentifier] derived from [ParticleSpec.location].
      */
     private suspend fun findArcHostBySpec(spec: ParticleSpec): ArcHost =
         hostRegistry.availableArcHosts()
             .filter { host ->
-                host.registeredParticles().map { clazz -> clazz.java.getCanonicalName() }
-                    .contains(spec.location)
+                host.registeredParticles().contains(ParticleIdentifier.from(spec.location))
             }.firstOrNull() ?: throw ParticleNotFoundException(spec)
 }

@@ -21,11 +21,15 @@ class ParticleRegistrationTest {
         ServiceLoaderHostRegistry.availableArcHosts().forEach { host: ArcHost ->
             when (host) {
                 is ProdHost -> {
-                    assertThat(host.registeredParticles()).contains(TestProdParticle::class)
+                    assertThat(host.registeredParticles()).contains(
+                        TestProdParticle::class.toParticleIdentifier()
+                    )
                     foundProdHost = true
                 }
                 is TestHost -> {
-                    assertThat(host.registeredParticles()).contains(TestHostParticle::class)
+                    assertThat(host.registeredParticles()).contains(
+                        TestHostParticle::class.toParticleIdentifier()
+                    )
                     foundTestHost = true
                 }
             }
@@ -37,7 +41,7 @@ class ParticleRegistrationTest {
     class DummyParticle : Particle
     class DummyHost : AbstractArcHost() {
         init {
-            runBlocking { registerParticle(DummyParticle::class) }
+            runBlocking { registerParticle(DummyParticle::class.toParticleIdentifier()) }
         }
     }
 
@@ -47,10 +51,14 @@ class ParticleRegistrationTest {
         val dummyhost = DummyHost()
         hostRegistry.registerHost(dummyhost)
         assertThat(hostRegistry.availableArcHosts()).contains(dummyhost)
-        assertThat(dummyhost.registeredParticles()).contains(DummyParticle::class)
+        assertThat(dummyhost.registeredParticles()).contains(
+            DummyParticle::class.toParticleIdentifier()
+        )
 
-        dummyhost.unregisterParticle(DummyParticle::class)
-        assertThat(dummyhost.registeredParticles()).doesNotContain(DummyParticle::class)
+        dummyhost.unregisterParticle(DummyParticle::class.toParticleIdentifier())
+        assertThat(dummyhost.registeredParticles()).doesNotContain(
+            DummyParticle::class.toParticleIdentifier()
+        )
 
         hostRegistry.unregisterHost(dummyhost)
         assertThat(hostRegistry.availableArcHosts()).doesNotContain(dummyhost)
@@ -69,11 +77,15 @@ class ParticleRegistrationTest {
         ExplicitHostRegistry.availableArcHosts().forEach { host: ArcHost ->
             when (host) {
                 is ProdHost -> {
-                    assertThat(host.registeredParticles()).contains(TestProdParticle::class)
+                    assertThat(host.registeredParticles()).contains(
+                        TestProdParticle::class.toParticleIdentifier()
+                    )
                     foundProdHost = true
                 }
                 is TestHost -> {
-                    assertThat(host.registeredParticles()).contains(TestHostParticle::class)
+                    assertThat(host.registeredParticles()).contains(
+                        TestHostParticle::class.toParticleIdentifier()
+                    )
                     foundTestHost = true
                 }
             }
