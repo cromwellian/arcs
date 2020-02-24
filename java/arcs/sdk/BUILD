@@ -17,6 +17,7 @@ arcs_kt_jvm_library(
     ]),
     visibility = ["//visibility:public"],
     exports = [
+        "//java/arcs/core/data:rawentity",
         "//java/arcs/core/data/util:data-util",
         "//java/arcs/core/storage/api:api-common",
         "//java/arcs/jvm/storage/api",
@@ -27,6 +28,7 @@ arcs_kt_jvm_library(
         "//java/arcs/core/storage:reference",
         "//java/arcs/core/storage:storage_key",
         "//java/arcs/core/storage/api:api-common",
+        "//java/arcs/core/storage/util",
         "//java/arcs/jvm/storage/api",
         "//java/arcs/sdk/storage",
         "//third_party/kotlin/kotlinx_coroutines",
