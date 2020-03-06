@@ -10,9 +10,14 @@
  */
 package arcs.core.host
 
+import arcs.core.common.toArcId
+import arcs.core.data.Capabilities
 import arcs.core.data.CollectionType
 import arcs.core.data.Plan
 import arcs.core.data.SingletonType
+import arcs.core.storage.CapabilitiesResolver
+import arcs.core.storage.api.Entity
+import arcs.core.storage.api.EntitySpec
 import arcs.core.storage.api.Handle
 import arcs.core.storage.handle.HandleManager
 import arcs.core.util.TaggedLog
@@ -75,6 +80,35 @@ abstract class AbstractArcHost(vararg initialParticles: ParticleRegistration) : 
      */
     protected open suspend fun updateArcHostContext(arcId: String, context: ArcHostContext) {
         runningArcs[arcId] = context
+        writeContextToStorage(arcId, context)
+    }
+
+    fun writeContextToStorage(arcId: String, context: ArcHostContext) {
+        val connections = context.particles.flatMap {
+            it.key.handles.map { handle ->
+                ArcHostParticle_HandleConnections(
+                    arcId,
+                    it.key.particleName,
+                    handle.key,
+                    handle.value.storageKey.toString(),
+                    handle.value.mode.name,
+                    handle.value.type.tag.name,
+                    handle.value.ttl?.minutes.toDouble() ?: 0.0
+                )
+            }
+        }
+        val arcState = ArcHostParticle_ArcHostContext(arcId, hostId, context.arcState.name)
+        val particles = context.particles.map {
+            ArcHostParticle_Particles(arcId, it.key.particleName, it.key.location, it.value.particleState.name,
+                it.value.consecutiveFailureCount.toDouble())
+        }
+
+        val resolver = CapabilitiesResolver(CapabilitiesResolver.CapabilitiesResolverOptions(arcId.toArcId()))
+//        val arcStateKey = resolver.createStorageKey(Capabilities.TiedToRuntime, arcState.schemaHash() )
+
+        // write arcState to arcId->arcContext
+        // write particles to arcId->arcContext-particleName
+        // write connections to arcId->arcContext-particleName-connections
     }
 
     override suspend fun startArc(partition: Plan.Partition) {
