@@ -21,6 +21,6 @@ schema ArcHostContext
   arcState: Text
 
 particle ArcHostParticle
-  arcHostContext: reads ArcHostContext
-  particles: reads [Particle]
-  handleConnections: reads [HandleConnection]
+  arcHostContext: reads writes ArcHostContext
+  particles: reads writes [Particle]
+  handleConnections: reads writes [HandleConnection]

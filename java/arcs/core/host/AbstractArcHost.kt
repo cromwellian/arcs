@@ -13,12 +13,13 @@ package arcs.core.host
 import arcs.core.common.toArcId
 import arcs.core.data.Capabilities
 import arcs.core.data.CollectionType
+import arcs.core.data.EntityType
 import arcs.core.data.Plan
 import arcs.core.data.SingletonType
 import arcs.core.storage.CapabilitiesResolver
-import arcs.core.storage.api.Entity
-import arcs.core.storage.api.EntitySpec
 import arcs.core.storage.api.Handle
+import arcs.core.storage.api.WriteCollectionHandle
+import arcs.core.storage.api.WriteSingletonHandle
 import arcs.core.storage.handle.HandleManager
 import arcs.core.util.TaggedLog
 import arcs.core.util.Time
@@ -83,32 +84,71 @@ abstract class AbstractArcHost(vararg initialParticles: ParticleRegistration) : 
         writeContextToStorage(arcId, context)
     }
 
-    fun writeContextToStorage(arcId: String, context: ArcHostContext) {
-        val connections = context.particles.flatMap {
-            it.key.handles.map { handle ->
-                ArcHostParticle_HandleConnections(
-                    arcId,
-                    it.key.particleName,
-                    handle.key,
-                    handle.value.storageKey.toString(),
-                    handle.value.mode.name,
-                    handle.value.type.tag.name,
-                    handle.value.ttl?.minutes.toDouble() ?: 0.0
+    suspend fun writeContextToStorage(arcId: String, context: ArcHostContext) {
+        val particle = ArcHostContextParticle()
+        val partition = createArcHostContextPersistencePlan(arcId)
+        partition.particles.get(0).handles.forEach { handleSpec ->
+            createHandle(handleSpec.key, handleSpec.value, particle.handles)
+        }
+        particle.writeArcHostContext(arcId, hostId, context)
+    }
+
+    suspend fun createArcHostContextPersistencePlan(arcId: String): Plan.Partition {
+        val resolver = CapabilitiesResolver(
+            CapabilitiesResolver.CapabilitiesResolverOptions(arcId.toArcId())
+        )
+
+        val arcStateKey = resolver.createStorageKey(
+            Capabilities.TiedToRuntime,
+            ArcHostParticle_ArcHostContext_Spec.schema,
+            "arcState"
+        )
+
+        val particlesStateKey = resolver.createStorageKey(
+            Capabilities.TiedToRuntime,
+            ArcHostParticle_Particles_Spec.schema,
+            "arcState_particles"
+        )
+
+        val handleConnectionsKey = resolver.createStorageKey(
+            Capabilities.TiedToRuntime,
+            ArcHostParticle_HandleConnections_Spec.schema,
+            "arcState_handleConnections"
+        )
+
+        return Plan.Partition(
+            arcId,
+            hostId,
+            listOf(
+                Plan.Particle(
+                    "ArcHosContextParticle",
+                    ArcHostContextParticle::class.toParticleIdentifier().id,
+                    mapOf(
+                        "arcHostContext" to Plan.HandleConnection(
+                            arcStateKey!!,
+                            HandleMode.Write,
+                            SingletonType(
+                                EntityType(ArcHostParticle_ArcHostContext_Spec.schema)
+                            )
+                        ),
+                        "particles" to Plan.HandleConnection(
+                            particlesStateKey!!,
+                            HandleMode.Write,
+                            CollectionType(
+                                EntityType(ArcHostParticle_Particles_Spec.schema)
+                            )
+                        ),
+                        "handleConnections" to Plan.HandleConnection(
+                            handleConnectionsKey!!,
+                            HandleMode.Write,
+                            CollectionType(
+                                EntityType(ArcHostParticle_HandleConnections_Spec.schema)
+                            )
+                        )
+                    )
                 )
-            }
-        }
-        val arcState = ArcHostParticle_ArcHostContext(arcId, hostId, context.arcState.name)
-        val particles = context.particles.map {
-            ArcHostParticle_Particles(arcId, it.key.particleName, it.key.location, it.value.particleState.name,
-                it.value.consecutiveFailureCount.toDouble())
-        }
-
-        val resolver = CapabilitiesResolver(CapabilitiesResolver.CapabilitiesResolverOptions(arcId.toArcId()))
-//        val arcStateKey = resolver.createStorageKey(Capabilities.TiedToRuntime, arcState.schemaHash() )
-
-        // write arcState to arcId->arcContext
-        // write particles to arcId->arcContext-particleName
-        // write connections to arcId->arcContext-particleName-connections
+            )
+        )
     }
 
     override suspend fun startArc(partition: Plan.Partition) {
