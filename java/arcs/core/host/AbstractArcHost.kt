@@ -18,8 +18,6 @@ import arcs.core.data.Plan
 import arcs.core.data.SingletonType
 import arcs.core.storage.CapabilitiesResolver
 import arcs.core.storage.api.Handle
-import arcs.core.storage.api.WriteCollectionHandle
-import arcs.core.storage.api.WriteSingletonHandle
 import arcs.core.storage.handle.HandleManager
 import arcs.core.util.TaggedLog
 import arcs.core.util.Time
@@ -45,7 +43,7 @@ abstract class AbstractArcHost(vararg initialParticles: ParticleRegistration) : 
     private val log = TaggedLog { "AbstractArcHost" }
     private val particleConstructors: MutableMap<ParticleIdentifier, ParticleConstructor> =
         mutableMapOf()
-    private val runningArcs: MutableMap<String, ArcHostContext> = mutableMapOf()
+    protected val runningArcs: MutableMap<String, ArcHostContext> = mutableMapOf()
     override val hostId = this::class.className()
 
     init {
@@ -72,7 +70,10 @@ abstract class AbstractArcHost(vararg initialParticles: ParticleRegistration) : 
     /** Subclasses may override this to load persistent context state. */
     protected open suspend fun lookupOrCreateArcHostContext(
         partition: Plan.Partition
-    ): ArcHostContext = runningArcs[partition.arcId] ?: ArcHostContext()
+    ): ArcHostContext = lookupArcHostContext(partition.arcId) ?: ArcHostContext()
+
+    protected open suspend fun lookupArcHostContext(arcId: String) =
+        runningArcs[arcId] ?: readContextFromStorage(arcId)
 
     /**
      * Called to persist [ArcHostContext] after [context] for [arcId] has been modified.
@@ -84,72 +85,37 @@ abstract class AbstractArcHost(vararg initialParticles: ParticleRegistration) : 
         writeContextToStorage(arcId, context)
     }
 
-    suspend fun writeContextToStorage(arcId: String, context: ArcHostContext) {
-        val particle = ArcHostContextParticle()
-        val partition = createArcHostContextPersistencePlan(arcId)
-        partition.particles.get(0).handles.forEach { handleSpec ->
-            createHandle(handleSpec.key, handleSpec.value, particle.handles)
+    /**
+     * Creates a specialized [ArcHostContextParticle] used for serializing [ArcHostContext] state
+     * to storage.
+     */
+    private suspend fun createArcHostContextParticle(arcId: String) =
+        ArcHostContextParticle().apply {
+            val partition = createArcHostContextPersistencePlan(arcId, hostId)
+            partition.particles.get(0).handles.forEach { handleSpec ->
+                createHandle(handleSpec.key, handleSpec.value, handles)
+            }
         }
-        particle.writeArcHostContext(arcId, hostId, context)
-    }
 
-    suspend fun createArcHostContextPersistencePlan(arcId: String): Plan.Partition {
-        val resolver = CapabilitiesResolver(
-            CapabilitiesResolver.CapabilitiesResolverOptions(arcId.toArcId())
-        )
+    /**
+     * Deserializes [ArcHostContext] from [Entity] types read from storage by
+     * using [ArcHostContextParticle].
+     */
+    suspend fun readContextFromStorage(arcId: String): ArcHostContext? =
+        createArcHostContextParticle(arcId).let {
+            it.readArcHostContext(arcId, hostId, this::instantiateParticle)
+        }?.also {
+            runningArcs[arcId] = it
+        }
 
-        val arcStateKey = resolver.createStorageKey(
-            Capabilities.TiedToRuntime,
-            ArcHostParticle_ArcHostContext_Spec.schema,
-            "arcState"
-        )
-
-        val particlesStateKey = resolver.createStorageKey(
-            Capabilities.TiedToRuntime,
-            ArcHostParticle_Particles_Spec.schema,
-            "arcState_particles"
-        )
-
-        val handleConnectionsKey = resolver.createStorageKey(
-            Capabilities.TiedToRuntime,
-            ArcHostParticle_HandleConnections_Spec.schema,
-            "arcState_handleConnections"
-        )
-
-        return Plan.Partition(
-            arcId,
-            hostId,
-            listOf(
-                Plan.Particle(
-                    "ArcHosContextParticle",
-                    ArcHostContextParticle::class.toParticleIdentifier().id,
-                    mapOf(
-                        "arcHostContext" to Plan.HandleConnection(
-                            arcStateKey!!,
-                            HandleMode.Write,
-                            SingletonType(
-                                EntityType(ArcHostParticle_ArcHostContext_Spec.schema)
-                            )
-                        ),
-                        "particles" to Plan.HandleConnection(
-                            particlesStateKey!!,
-                            HandleMode.Write,
-                            CollectionType(
-                                EntityType(ArcHostParticle_Particles_Spec.schema)
-                            )
-                        ),
-                        "handleConnections" to Plan.HandleConnection(
-                            handleConnectionsKey!!,
-                            HandleMode.Write,
-                            CollectionType(
-                                EntityType(ArcHostParticle_HandleConnections_Spec.schema)
-                            )
-                        )
-                    )
-                )
-            )
-        )
-    }
+    /**
+     * Serializes [ArcHostContext] into [Entity] types generated by 'schema2kotlin', and
+     * use [ArcHostContextParticle] to write them to storage under the given [arcId].
+     */
+    suspend fun writeContextToStorage(arcId: String, context: ArcHostContext) =
+        createArcHostContextParticle(arcId).run {
+            writeArcHostContext(arcId, hostId, context)
+        }
 
     override suspend fun startArc(partition: Plan.Partition) {
         val context = lookupOrCreateArcHostContext(partition)
