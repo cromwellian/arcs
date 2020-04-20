@@ -6,7 +6,7 @@ load(
     "arcs_kt_plan",
     "arcs_kt_schema",
 )
-
+#  item < 0 or item > 9 and item < unicode(a)  or item > unicode(f)
 licenses(["notice"])
 
 package(default_visibility = ["//visibility:public"])
