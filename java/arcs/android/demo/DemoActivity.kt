@@ -19,15 +19,21 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import arcs.android.host.AndroidManifestHostRegistry
 import arcs.core.allocator.Allocator
+import arcs.core.allocator.Arc
+import arcs.core.host.AbstractArcHost
 import arcs.core.host.EntityHandleManager
 import arcs.core.host.HostRegistry
+import arcs.core.host.ParticleRegistration
+import arcs.core.host.ParticleState
+import arcs.core.host.SchedulerProvider
 import arcs.core.host.SimpleSchedulerProvider
+import arcs.core.host.toRegistration
+import arcs.core.storage.StorageEndpointManager
+import arcs.jvm.host.ExplicitHostRegistry
 import arcs.jvm.util.JvmTime
 import arcs.sdk.android.storage.AndroidStorageServiceEndpointManager
 import arcs.sdk.android.storage.service.DefaultConnectionFactory
@@ -45,6 +51,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONException
 import org.json.JSONObject
 import org.webrtc.DataChannel
@@ -97,13 +104,22 @@ class DemoActivity : AppCompatActivity() {
     DefaultConnectionFactory(this)
   )
 
+  var arcHost: ShowcaseHost? = null
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
     setContentView(R.layout.main_activity)
 
     scope.launch {
-      hostRegistry = AndroidManifestHostRegistry.create(this@DemoActivity)
+
+      hostRegistry = ExplicitHostRegistry()
+      arcHost = ShowcaseHost(
+        scope.coroutineContext,
+        schedulerProvider,
+        storageEndpointManager,
+        ::ChatParticle.toRegistration()
+      )
 
       allocator = Allocator.create(
         hostRegistry,
@@ -130,16 +146,19 @@ class DemoActivity : AppCompatActivity() {
             val data = stringToByteBuffer(text)
             sendChannel.send(DataChannel.Buffer(data, false))
             Log.d(TAG, "Sending updating message")
-            messages.add(Message(text, isRecv = false))
-            msgAdapter.notifyDataSetChanged()
+            scope.launch {
+              chatParticle?.updateMessage(text)
+            }
+//            messages.add(Message(text, isRecv = false))
+//            msgAdapter.notifyDataSetChanged()
           }
         }
       }
     }
 
-    connectToSignallingServer();
-    initializePeerConnectionFactory();
-    initializePeerConnections();
+    connectToSignallingServer()
+    initializePeerConnectionFactory()
+    initializePeerConnections()
   }
 
   override fun onDestroy() {
@@ -151,6 +170,19 @@ class DemoActivity : AppCompatActivity() {
     scope.launch {
       val arcId = allocator.startArcForPlan(PersonRecipePlan).id
       allocator.stopArc(arcId)
+    }
+  }
+
+  var arc: Arc? = null
+  var chatParticle: ChatParticle? = null
+
+  private fun startChatArc() {
+    scope.launch {
+      arc = allocator.startArcForPlan(ChatRecipePlan)
+      if (arc != null && arcHost != null) {
+        chatParticle = arcHost?.getParticle<ChatParticle>(arc?.id.toString(), "ChatParticle")
+        chatParticle?.addMessage = ::addMessage
+      }
     }
   }
 
@@ -355,13 +387,18 @@ class DemoActivity : AppCompatActivity() {
           override fun onBufferedAmountChange(l: Long) {}
           override fun onStateChange() {}
           override fun onMessage(buffer: DataChannel.Buffer) {
+            if (arc == null) {
+              startChatArc()
+            }
+
             val msg = byteBufferToString(buffer.data)
             Log.d(TAG, "data channel onMessage: got message$msg")
-            runOnUiThread {
               Log.d(TAG, "Updating message")
-              messages.add(Message(msg, isRecv = true))
-              msgAdapter.notifyDataSetChanged()
-            }
+              scope.launch {
+                chatParticle?.updateMessage(msg)
+              }
+//              messages.add(Message(msg, isRecv = true))
+//              msgAdapter.notifyDataSetChanged()
           }
         })
       }
@@ -376,7 +413,6 @@ class DemoActivity : AppCompatActivity() {
     }
     return factory.createPeerConnection(rtcConfig, pcConstraints, pcObserver)
   }
-
 
   private fun stringToByteBuffer(msg: String): ByteBuffer {
     return ByteBuffer.wrap(msg.toByteArray(Charset.defaultCharset()))
@@ -425,11 +461,81 @@ class DemoActivity : AppCompatActivity() {
     override fun getItemCount() = messages.size
 
     override fun getItemViewType(position: Int): Int {
-      return if(messages[position].isRecv) 0 else 1
+      return if (messages[position].isRecv) 0 else 1
     }
+  }
+
+  fun addMessage(msg: String, isRecv: Boolean) = runOnUiThread {
+    messages.add(Message(msg, isRecv = isRecv))
+    msgAdapter.notifyDataSetChanged()
   }
 
   companion object {
     const val TAG = "Demo"
   }
+
+  class ChatParticle : AbstractChatParticle() {
+    var addMessage: ((String, Boolean) -> Unit)? = null
+    override fun onReady() {
+      Log.d(TAG, "onReady()")
+      handles.message.onUpdate { delta ->
+        Log.d(TAG, "delta is $delta, ${delta.new}")
+        val fetch = handles.message.fetch()
+        Log.d(TAG, "fetched msg from handle $fetch")
+        addMessage?.invoke(fetch?.message.toString(), delta.new != null)
+      }
+    }
+
+    suspend fun addMessage(msg: String) {
+      withContext(handles.dispatcher) {
+        handles.message.store(Chat(msg))
+      }
+    }
+
+    suspend fun updateMessage(msg: String) {
+      Log.d(TAG, "UpdateMessage $msg")
+      withContext(handles.dispatcher) {
+        handles.message.store(Chat(msg))
+      }
+    }
+  }
+}
+
+@ExperimentalCoroutinesApi
+class ShowcaseHost(
+  coroutineContext: CoroutineContext,
+  schedulerProvider: SchedulerProvider,
+  storageEndpointManager: StorageEndpointManager,
+  vararg particleRegistrations: ParticleRegistration
+) : AbstractArcHost(
+  coroutineContext = coroutineContext,
+  updateArcHostContextCoroutineContext = coroutineContext,
+  schedulerProvider = schedulerProvider,
+  storageEndpointManager = storageEndpointManager,
+  initialParticles = *particleRegistrations
+) {
+  override val platformTime = JvmTime
+
+  @Suppress("UNCHECKED_CAST")
+  suspend fun <T> getParticle(arcId: String, particleName: String): T {
+    val arcHostContext = requireNotNull(getArcHostContext(arcId)) {
+      "ArcHost: No arc host context found for $arcId"
+    }
+    val particleContext = requireNotNull(
+      arcHostContext.particles.first {
+        it.planParticle.particleName == particleName
+      }
+    ) {
+      "ArcHost: No particle named $particleName found in $arcId"
+    }
+    val allowableStartStates = arrayOf(ParticleState.Running, ParticleState.Waiting)
+    check(particleContext.particleState in allowableStartStates) {
+      "ArcHost: Particle $particleName has failed, or not been started"
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    return particleContext.particle as T
+  }
+
+  override fun toString(): String = "ShowcaseHost"
 }
